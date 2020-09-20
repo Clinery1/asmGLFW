@@ -3,4 +3,4 @@ nasm -f elf64 -F dwarf src/main.asm -o main.o &&
 nasm -f elf64 -F dwarf src/alloc.asm -o alloc.o &&
 nasm -f elf64 -F dwarf src/shader.asm -o shader.o &&
 nasm -f elf64 -F dwarf src/common.asm -o common.o &&
-gcc -nostartfiles -g -ggdb main.o common.o alloc.o shader.o -lglfw -lGLEW -lGL -o main 
+gcc -nostartfiles -g -ggdb main.o common.o alloc.o shader.o -lglfw -lGL -o main 

@@ -33,10 +33,6 @@ extern  glDeleteProgram
 extern  glBufferData
 extern  glGetError
 
-; GLEW imports
-extern  glewExperimental
-extern  glewInit
-
 ; my imports
 extern  myLoadShader
 extern  myPrint
@@ -86,8 +82,6 @@ initError:db "Failed to initialize GLFW",10
 initErrorLen:equ $-initError
 windowError:db "Failed to create the window",10
 windowErrorLen:equ $-windowError
-glewInitError:db "Failed to initialize GLEW",10
-glewInitErrorLen:equ $-glewInitError
 pFourF:dd 0.4
 zeroF:dd 0.0
 oneF:dd 1.0
@@ -108,7 +102,6 @@ _start:
     xor rax,rax
     mov [rel vertexBuffer],rax
     ; BEGIN INIT
-    mov byte[rel glewExperimental],true
     call glfwInit wrt ..plt
     cmp rax,false
     je _start.initError
@@ -138,10 +131,6 @@ _start:
     je _start.windowError
     mov rdi,[rel window]
     call glfwMakeContextCurrent wrt ..plt
-    mov byte[rel glewExperimental],true
-    call glewInit wrt ..plt
-    cmp rax,0
-    jne .glewError
     mov rdi,[rel window]
     mov rsi,GLFW_STICKY_KEYS
     mov rdx,GL_TRUE
@@ -238,12 +227,6 @@ _start:
     .windowError:
         mov rdi,windowError
         mov rsi,windowErrorLen
-        call myEprint wrt ..plt
-        call glfwTerminate wrt ..plt
-        jmp exitOne wrt ..plt
-    .glewError:
-        mov rdi,glewInitError wrt ..gotpc
-        mov rsi,glewInitErrorLen wrt ..gotpc
         call myEprint wrt ..plt
         call glfwTerminate wrt ..plt
         jmp exitOne wrt ..plt
