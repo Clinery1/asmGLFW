@@ -91,7 +91,7 @@ glewInitErrorLen:equ $-glewInitError
 pFourF:dd 0.4
 zeroF:dd 0.0
 oneF:dd 1.0
-staticVertexBuffer:dd -1.0,1.0,0.0,  1.0,-1.0,0.0,  0.0,1.0,0.0
+staticVertexBuffer:dd -1.0,-1.0,0.0,  1.0,-1.0,0.0,  0.0,1.0,0.0
 staticVertexBufferLen:equ $-staticVertexBuffer
 
 section .bss
@@ -161,22 +161,17 @@ _start:
     mov [rel programID],rax
     ; END SHADER INIT
     ; BEGIN TRIANGLE INIT
-    .breakpoint:
     mov rdi,3
     mov rsi,vertexBuffer
-    ; errors here
     call glGenBuffers wrt ..plt
-    call glGetError wrt ..plt
     mov rdi,GL_ARRAY_BUFFER
     mov rsi,[rel vertexBuffer]
     call glBindBuffer wrt ..plt
-    call glGetError wrt ..plt
     mov rdi,GL_ARRAY_BUFFER
     mov rsi,staticVertexBufferLen
     mov rdx,staticVertexBuffer
     mov rcx,GL_STATIC_DRAW
     call glBufferData wrt ..plt
-    call glGetError wrt ..plt
     ; END TRIANGLE INIT
     ; END INIT
     .actionLoop:
@@ -207,8 +202,8 @@ _start:
         mov rdi,[rel window]
         call glfwSwapBuffers wrt ..plt
         call glfwPollEvents wrt ..plt
-    ; } while (glfwGetKey(window,GLFW_KEY_ESCAPE)!=GLFW_PRESS && glfwWindowShouldClose(window)==0)  the instructions from here to .exit are all the comparison
-    ; pseudo code for the next 9 lines: if escape key is pressed OR window should close THEN jump to .exit
+    ; } while (glfwGetKey(window,GLFW_KEY_ESCAPE)!=GLFW_PRESS && glfwWindowShouldClose(window)==0)  the instructions from here to .cleanup are all the comparison
+    ; pseudo code for the next 9 lines: if escape key is pressed OR window should close THEN jump to .cleanup
     mov rdi,[rel window]
     mov rsi,GLFW_KEY_ESCAPE
     call glfwGetKey wrt ..plt
@@ -218,6 +213,7 @@ _start:
     call glfwWindowShouldClose wrt ..plt
     cmp rax,0
     je .actionLoop
+    .cleanup:
     mov rdi,1
     mov rsi,vertexBuffer
     call glDeleteBuffers wrt ..plt

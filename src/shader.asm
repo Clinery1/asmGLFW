@@ -163,10 +163,10 @@ linkProgram:
     call glCreateProgram wrt ..plt
     mov [rel programID],rax
     mov rdi,[rel programID]
-    mov rsi,vertID
+    mov rsi,[rel vertID]
     call glAttachShader wrt ..plt
     mov rdi,[rel programID]
-    mov rsi,fragID
+    mov rsi,[rel fragID]
     call glAttachShader wrt ..plt
     mov rdi,[rel programID]
     call glLinkProgram wrt ..plt
@@ -254,7 +254,7 @@ compileAndCheckFrag:
     call myPrint wrt ..plt
     mov rdi,[rel fragID]
     mov rsi,1
-    mov rdx,[rel fragSrcPtrPtr]
+    mov rdx,[rel fragSrcPtrPtr] ; this needs a pointer to a pointer for some reason... if you just give a pointer to the text then it segfaults
     mov rcx,0
     call glShaderSource wrt ..plt
     mov rdi,[rel fragID]
