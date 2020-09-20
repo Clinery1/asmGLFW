@@ -1,0 +1,8 @@
+# vim: ft=sh
+nasm -f elf64 -F dwarf src/main.asm -o main.o &&
+nasm -f elf64 -F dwarf src/alloc.asm -o alloc.o &&
+nasm -f elf64 -F dwarf src/shader.asm -o shader.o &&
+nasm -f elf64 -F dwarf src/common.asm -o common.o &&
+gcc main.o common.o -lglfw -lGL -o main -nostartfiles -g -ggdb alloc.o shader.o -lGLEW
+#nasm -f elf64 -F dwarf src/test.asm -o test.o
+#gcc -o main test.o -lglfw -nostartfiles
