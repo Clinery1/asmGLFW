@@ -1,6 +1,7 @@
 a.out
 main
 *.o
+.old
 **/*.bak
 **/*.cpp
 **/*.c
