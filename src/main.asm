@@ -39,6 +39,7 @@ extern  myPrint
 extern  myEprint
 extern  exitZero
 extern  exitOne
+extern  cacheShader
 
 
 ; GLFW defines
@@ -85,8 +86,9 @@ windowErrorLen:equ $-windowError
 pFourF:dd 0.4
 zeroF:dd 0.0
 oneF:dd 1.0
-staticVertexBuffer:dd -1.0,-1.0,0.0,  1.0,-1.0,0.0,  0.0,1.0,0.0
+staticVertexBuffer:dd -1.0,-1.0,0.0, 1.0,-1.0,0.0, 0.0,1.0,0.0,  -1.0,1.0,0.0, 0.0,0.5,0.0, 1.0,1.0,0.0,  1.0,0.25,0.0, 1.0,-0.25,0.0, 0.75,0.0,0.0,  -1.0,0.25,0.0, -1.0,-0.25,0.0, -0.75,0.0,0.0
 staticVertexBufferLen:equ $-staticVertexBuffer
+staticVertexBufferTriangles:equ staticVertexBufferLen/12
 
 section .bss
 window:resq 1
@@ -148,6 +150,8 @@ _start:
     ; BEGIN SHADER INIT
     call myLoadShader wrt ..plt
     mov [rel programID],rax
+    ;mov rdi,[rel programID]
+    ;call cacheShader wrt ..plt
     ; END SHADER INIT
     ; BEGIN TRIANGLE INIT
     mov rdi,3
@@ -183,7 +187,7 @@ _start:
         call glVertexAttribPointer wrt ..plt
         mov rdi,GL_TRIANGLES
         mov rsi,0
-        mov rdx,3
+        mov rdx,staticVertexBufferTriangles
         call glDrawArrays wrt ..plt
         mov rdi,0
         call glDisableVertexAttribArray wrt ..plt

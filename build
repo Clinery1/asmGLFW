@@ -52,10 +52,12 @@ recursive_compile() {
             extension="${file##*.}"
             basename="$(echo "$file"|sed "s/\.$extension//g")"
             if [ "$extension" = "asm" ];then
-                FILE="$(echo "$PWD"|sed "s@$BASEDIR@@g;s@^/@@g")/$file"
+                REL_PWD="$(echo "$PWD"|sed "s@$BASEDIR@@g;s@^/@@g")"
+                FILE="$REL_PWD/$file"
                 if [ "$file" -nt "$BASEDIR/target/$DIR/$basename.o" ];then
                     echo -ne "\e[36m  Assembling $FILE\e[0m\r"
-                    if $NASM_COMMAND -f elf64 $DEBUG $file -o $BASEDIR/target/$DIR/$basename.o;then
+                    pushd $BASEDIR > /dev/null
+                    if $NASM_COMMAND -f elf64 $DEBUG $REL_PWD/$file -o $BASEDIR/target/$DIR/$basename.o;then
                         echo -e "\e[32m  Assembled $FILE successfully\e[0m"
                         NEW_FILES="true"
                         FILES="$FILES target/$DIR/$basename.o"
@@ -63,6 +65,7 @@ recursive_compile() {
                         echo -e "\e[31m  Assembling $FILE failed\e[0m"
                         exit 1
                     fi
+                    popd > /dev/null
                 else
                     FILES="$FILES target/$DIR/$basename.o"
                     echo -e "\e[34m  Skipping: $FILE not modified\e[0m"

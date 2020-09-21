@@ -23,9 +23,10 @@ section .text
 ; MEMORY ALLOC/DEALLOC ;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-; IN:   byte amount:rax,address:rbx
+; IN:   byte amount:rdi
 ; OUT:  address or error code:rax
 myAlloc:
+    mov rax,rdi
     mov rcx,rbx
     push rbx
     xor rbx,rbx
@@ -71,17 +72,11 @@ __alloc:
     pop rdi
     pop rdx
     ret
-; IN:   amount:rax,address:rbx
+; IN:   address:rdi,amount:rsi
 ; OUT:  error code:rax
 myFree:
-    push rdi
-    push rsi
-    mov rsi,rax
-    mov rdi,rbx
     mov rax,11
     syscall
-    pop rsi
-    pop rdi
     ret
 
 

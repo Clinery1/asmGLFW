@@ -8,6 +8,7 @@
 
 
 global  myLoadShader
+global  cacheShader
 
 
 ; GL imports
@@ -19,10 +20,12 @@ extern  glGetShaderiv
 extern  glGetProgramiv
 extern  glGetShaderInfoLog
 extern  glGetProgramInfoLog
+extern  glGetProgramiv
 extern  glAttachShader
 extern  glLinkProgram
 extern  glDetachShader
 extern  glDeleteShader
+extern  glGetProgramBinary
 
 ; other imports
 extern  myAlloc
@@ -30,16 +33,23 @@ extern  myFree
 extern  myPrint
 extern  exitOne
 extern  _start.exit
+extern  openFile
+extern  readFile
+extern  fileSize
+extern  closeFile
+extern  createFile
+extern  writeFile
 
 
 ; GL defines
-%define GL_FRAGMENT_SHADER 0x8b30
-%define GL_VERTEX_SHADER 0x8b31
-%define GL_COMPILE_STATUS 0x8b81
-%define GL_LINK_STATUS 0x8b82
-%define GL_INFO_LOG_LENGTH 0x8b84
-%define GL_FALSE 0
-%define GL_TRUE 1
+%define GL_PROGRAM_BINARY_LENGTH    0x8741
+%define GL_FRAGMENT_SHADER          0x8b30
+%define GL_VERTEX_SHADER            0x8b31
+%define GL_COMPILE_STATUS           0x8b81
+%define GL_LINK_STATUS              0x8b82
+%define GL_INFO_LOG_LENGTH          0x8b84
+%define GL_FALSE                    0
+%define GL_TRUE                     1
 
 
 section .data
@@ -67,6 +77,15 @@ allocErrorText:db "Memory allocation error",10
 allocErrorTextLen:equ $-allocErrorText
 linkText:db "Linking the program",10
 linkTextLen:equ $-linkText
+getProgramError1:db "Unable to get program length, program not cached",10
+getProgramError1Len:equ $-getProgramError1
+getProgramError2:db "Unable to get program binary, program not cached",10
+getProgramError2Len:equ $-getProgramError2
+getProgramError3:db "Unable to write to program.cache",10
+getProgramError3Len:equ $-getProgramError2
+shaderCached:db "Shader was previously cached, not cacheing",10
+shaderCachedLen:equ $-shaderCached
+shaderCacheName:db "program.cache",0
 
 section .bss
 ; fragment things
@@ -82,16 +101,80 @@ vertSize:resq 1
 vertID:resq 1
 
 ; other things
+programBinPtr:resq 1
 programID:resq 1
-statbuf:resq 32
 result:resq 1
 infoLogLength:resq 1
 infoLogPtr:resq 1
+binaryFormat:resq 1
 
 
 section .text
 ; function(rdi,rsi,rdx,rcx,r8,r9)->rax   other args go to the stack in reverse order
 ; functions return in rax
+
+; THIS IS IN TESTING, MAY NOT BE STABLE
+; IN: rdi: programID
+; programID: self explanitory
+cacheShader:
+    mov [rel programID],rdi
+    mov rdi,shaderCacheName
+    mov rsi,openMode
+    call openFile wrt ..plt
+    cmp rax,0
+    jge .fileExists
+    .continue:
+    mov rdi,shaderCacheName
+    mov rsi,0660o
+    call createFile wrt ..plt
+    cmp rax,0
+    jl .errorCreate
+    push rax
+    mov rsi,[rel programID]
+    mov rsi,GL_PROGRAM_BINARY_LENGTH
+    mov rdx,result
+    call glGetProgramiv wrt ..plt
+    cmp rax,0
+    jne .errorLen
+    mov rdi,[rel result]
+    push rdi
+    .breakpoint:
+    call myAlloc wrt ..plt
+    cmp rax,0
+    jle allocError
+    mov [rel programBinPtr],rax
+    mov rdi,[rel programID]
+    pop rsi
+    mov rdx,infoLogLength
+    mov rcx,binaryFormat
+    mov r8,[rel programBinPtr]
+    call glGetProgramBinary wrt ..plt
+    pop rdi
+    push rdi
+    mov rsi,[rel programBinPtr]
+    mov rdx,[rel result]
+    .breakpoint2:
+    call writeFile
+    pop rdi
+    call closeFile
+    ; TODO: continue
+    ret
+    .fileExists:
+        mov rdi,rax
+        call closeFile
+        mov rdi,shaderCached
+        mov rsi,shaderCachedLen
+        call myPrint
+        ret
+    .errorLen:
+        ; TODO
+        ret
+    .errorBin:
+        ret
+    .errorCreate:
+        ret
+    .errorWrite:
+        ret
 
 
 myLoadShader:
@@ -185,7 +268,6 @@ linkProgram:
     .error:
         mov rdi,[rel infoLogLength]
         add rdi,1
-        mov rsi,0
         call myAlloc wrt ..plt
         cmp rax,-1
         je allocError
@@ -230,7 +312,6 @@ compileAndCheckVert:
     .error:
         mov rdi,[rel infoLogLength]
         add rdi,1
-        mov rsi,0
         call myAlloc wrt ..plt
         cmp rax,-1
         je allocError
@@ -274,7 +355,6 @@ compileAndCheckFrag:
     .error:
         mov rdi,[rel infoLogLength]
         add rdi,1
-        mov rsi,0
         call myAlloc wrt ..plt
         cmp rax,-1
         je allocError
@@ -292,42 +372,81 @@ compileAndCheckFrag:
     .continue:
     ret
 
+readFrag:
+    ; stack grown DOWN (-) on push and UP (+) on pop
+    mov rdi,fragShaderFilename
+    mov rsi,openMode
+    call openFile
+    cmp rax,-2
+    je fragFileNotFound
+    push rax
+    mov rdi,rax
+    call fileSize
+    ; TODO: add an error handler
+    add rax,10
+    mov [rel fragSize],rax
+    mov rdi,rax
+    call myAlloc wrt ..plt
+    cmp rax,-1
+    je allocError
+    mov [rel fragSrcPtr],rax
+    pop rdi
+    push rdi
+    mov rsi,[rel fragSrcPtr]
+    mov rdx,[rel fragSize]
+    call readFile
+    cmp rax,-1
+    je .fragError
+    mov rbx,[rel fragSrcPtr]
+    mov qword[rbx+rax+1],0   ; rbx is the pointer to the start of the string, rax is the length and +1 takes you to the last byte
+    pop rdi
+    call closeFile
+    ret
+    .fragError:
+    pop rdi
+    call closeFile
+    mov rax,1
+    mov rdi,1
+    mov rsi,fragReadError
+    mov rdx,fragReadErrorLen
+    syscall
+    jmp _start.exit wrt ..plt
+
 readVert:
     ; stack grown DOWN (-) on push and UP (+) on pop
     ; open the file
-    mov rax,2
     mov rdi,vertShaderFilename
-    mov rsi,0
-    mov rdx,openMode
-    syscall
+    mov rsi,openMode
+    call openFile
     cmp rax,-2
     je vertFileNotFound
     push rax    ; store the FD in the stack, it is still in rax so move the FD to rdi
     ; fstat the file so we can get the size of it
     mov rdi,rax
-    mov rax,5
-    mov rsi,statbuf
-    syscall
-    mov rax,[rel statbuf+48]
+    call fileSize
     add rax,10
     mov [rel vertSize],rax
-    mov rbx,0
+    mov rdi,rax
     call myAlloc wrt ..plt
     cmp rax,-1
     je allocError
     mov [rel vertSrcPtr],rax
     ; read the file
-    mov rax,0
     pop rdi
+    push rdi
     mov rsi,[rel vertSrcPtr] ; this contains a pointer to the value so it needs to read what is in the value
-    mov rdx,[rel statbuf+48]
-    syscall
+    mov rdx,[rel vertSize]
+    call readFile
     cmp rax,-1
     je .vertError
     mov rbx,[rel vertSrcPtr]
-    mov byte[rbx+rax+1],0
+    mov qword[rbx+rax+1],0
+    pop rdi
+    call closeFile
     ret
     .vertError:
+    pop rdi
+    call closeFile
     mov rax,1
     mov rdi,1
     mov rsi,vertReadError
@@ -335,42 +454,3 @@ readVert:
     syscall
     jmp _start.exit wrt ..plt
     ; we shouldn't be executing code after an exit syscall
-readFrag:
-    ; stack grown DOWN (-) on push and UP (+) on pop
-    mov rax,2
-    mov rdi,fragShaderFilename
-    mov rsi,0
-    mov rdx,openMode
-    syscall
-    cmp rax,-2
-    je fragFileNotFound
-    push rax
-    mov rdi,rax
-    mov rax,5
-    mov rsi,statbuf
-    syscall
-    mov rax,[rel statbuf+48]
-    add rax,10
-    mov [rel fragSize],rax
-    mov rbx,0
-    call myAlloc wrt ..plt
-    cmp rax,-1
-    je allocError
-    mov [rel fragSrcPtr],rax
-    mov rax,0
-    pop rdi
-    mov rsi,[rel fragSrcPtr]
-    mov rdx,[rel statbuf+48]
-    syscall
-    cmp rax,-1
-    je .fragError
-    mov rbx,[rel fragSrcPtr]
-    mov byte[rbx+rax+1],0
-    ret
-    .fragError:
-    mov rax,1
-    mov rdi,1
-    mov rsi,fragReadError
-    mov rdx,fragReadErrorLen
-    syscall
-    jmp _start.exit wrt ..plt
