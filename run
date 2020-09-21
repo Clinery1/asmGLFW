@@ -1,2 +1,12 @@
-./build &&
-./main
+# vim: ft=sh
+if ./build $1;then
+    FILE="target/debug/main"
+    if [ "$1" = "clean" ];then
+        FILE="target/debug/main"
+        exit 0
+    elif [ "$1" = "release" ];then
+        FILE="target/release/main"
+    fi
+    echo -e "\e[37mRunning $FILE\e[0m"
+    $FILE
+fi

@@ -1,6 +1,84 @@
 # vim: ft=sh
-nasm -f elf64 -F dwarf src/main.asm -o main.o &&
-nasm -f elf64 -F dwarf src/alloc.asm -o alloc.o &&
-nasm -f elf64 -F dwarf src/shader.asm -o shader.o &&
-nasm -f elf64 -F dwarf src/common.asm -o common.o &&
-gcc -nostartfiles -g -ggdb main.o common.o alloc.o shader.o -lglfw -lGL -o main 
+
+# edit these if you want custom commands for the assembler and linker
+NASM_COMMAND="nasm"
+GCC_COMMAND="gcc"
+
+
+if [ ! -d "target" ];then
+    mkdir target
+fi
+FILES=""
+BASEDIR="$PWD"
+DEBUG=""
+DIR=""
+if [ "$1" = "debug" -o "$1" = "" ];then
+    DEBUG="-F dwarf"
+    DIR="debug"
+elif [ "$1" = "release" ];then
+    DIR="release"
+elif [ "$1" = "clean" ];then
+    echo -ne "Cleaning build files...\r"
+    if rm -rf target;then
+        echo     "Build files cleaned    "
+        exit 0
+    else
+        exit 1
+    fi
+elif [ "$1" = "help" ];then
+    echo "help: $0:"
+    echo "  subcommands:"
+    echo "    help: displays this message"
+    echo "    clean: removes build files"
+    echo "    debug: builds a debug program"
+    echo "    release: builds a release program without debug info"
+    echo "  if no subcommand is given, debug is assumed"
+    exit 1
+else
+    echo "Invalid subcommand"
+    exit 1
+fi
+if [ ! -d "target/$DIR" ];then
+    mkdir "target/$DIR"
+fi
+pushd src > /dev/null
+NEW_FILES="false"
+recursive_compile() {
+    for file in *;do
+        if [ -d "$file" ];then
+            pushd $file > /dev/null
+            recursive_compile
+        else
+            extension="${file##*.}"
+            basename="$(echo "$file"|sed "s/\.$extension//g")"
+            if [ "$extension" = "asm" ];then
+                FILE="$(echo "$PWD"|sed "s@$BASEDIR@@g;s@^/@@g")/$file"
+                if [ "$file" -nt "$BASEDIR/target/$DIR/$basename.o" ];then
+                    echo -ne "\e[36m  Assembling $FILE\e[0m\r"
+                    if $NASM_COMMAND -f elf64 $DEBUG $file -o $BASEDIR/target/$DIR/$basename.o;then
+                        echo -e "\e[32m  Assembled $FILE successfully\e[0m"
+                        NEW_FILES="true"
+                        FILES="$FILES target/$DIR/$basename.o"
+                    else
+                        echo -e "\e[31m  Assembling $FILE failed\e[0m"
+                        exit 1
+                    fi
+                else
+                    FILES="$FILES target/$DIR/$basename.o"
+                    echo -e "\e[34m  Skipping: $FILE not modified\e[0m"
+                fi
+            fi
+        fi
+    done
+    popd > /dev/null
+}
+echo -e "\e[37mBuilding...\e[0m"
+recursive_compile
+if [ "$NEW_FILES" = "true" -o ! -f "target/$DIR/main" ];then
+    echo "Linking..."
+    if $GCC_COMMAND -nostartfiles $FILES -lglfw -lGL -o target/$DIR/main;then
+        echo -e "\e[32m  Linking successful\e[0m"
+    fi
+else
+    echo -e "\e[33mNo new files, not relinking\e[0m"
+fi

@@ -5,3 +5,4 @@ main
 **/*.bak
 **/*.cpp
 **/*.c
+target/
