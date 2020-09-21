@@ -26,6 +26,7 @@ extern  glLinkProgram
 extern  glDetachShader
 extern  glDeleteShader
 extern  glGetProgramBinary
+extern  glProgramBinary
 
 ; other imports
 extern  myAlloc
@@ -112,70 +113,6 @@ binaryFormat:resq 1
 section .text
 ; function(rdi,rsi,rdx,rcx,r8,r9)->rax   other args go to the stack in reverse order
 ; functions return in rax
-
-; THIS IS IN TESTING, MAY NOT BE STABLE
-; IN: rdi: programID
-; programID: self explanitory
-cacheShader:
-    mov [rel programID],rdi
-    mov rdi,shaderCacheName
-    mov rsi,openMode
-    call openFile wrt ..plt
-    cmp rax,0
-    jge .fileExists
-    .continue:
-    mov rdi,shaderCacheName
-    mov rsi,0660o
-    call createFile wrt ..plt
-    cmp rax,0
-    jl .errorCreate
-    push rax
-    mov rsi,[rel programID]
-    mov rsi,GL_PROGRAM_BINARY_LENGTH
-    mov rdx,result
-    call glGetProgramiv wrt ..plt
-    cmp rax,0
-    jne .errorLen
-    mov rdi,[rel result]
-    push rdi
-    .breakpoint:
-    call myAlloc wrt ..plt
-    cmp rax,0
-    jle allocError
-    mov [rel programBinPtr],rax
-    mov rdi,[rel programID]
-    pop rsi
-    mov rdx,infoLogLength
-    mov rcx,binaryFormat
-    mov r8,[rel programBinPtr]
-    call glGetProgramBinary wrt ..plt
-    pop rdi
-    push rdi
-    mov rsi,[rel programBinPtr]
-    mov rdx,[rel result]
-    .breakpoint2:
-    call writeFile
-    pop rdi
-    call closeFile
-    ; TODO: continue
-    ret
-    .fileExists:
-        mov rdi,rax
-        call closeFile
-        mov rdi,shaderCached
-        mov rsi,shaderCachedLen
-        call myPrint
-        ret
-    .errorLen:
-        ; TODO
-        ret
-    .errorBin:
-        ret
-    .errorCreate:
-        ret
-    .errorWrite:
-        ret
-
 
 myLoadShader:
     ; move the pointer to the pointer to the shader code into [(SHADER_TYPE)SrcPtrPtr]

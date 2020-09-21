@@ -150,8 +150,6 @@ _start:
     ; BEGIN SHADER INIT
     call myLoadShader wrt ..plt
     mov [rel programID],rax
-    ;mov rdi,[rel programID]
-    ;call cacheShader wrt ..plt
     ; END SHADER INIT
     ; BEGIN TRIANGLE INIT
     mov rdi,3
