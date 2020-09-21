@@ -1,6 +1,7 @@
 # GLFW in Assembly language
 This project was started Friday 9/18/20 and through a lot of segfaults and other issues, it is brought to (sort of) life on 9/20/20.
 This project is based on the tutorials in [opengl-tutorials/ogl](https://github.com/opengl-tutorials/ogl)
+Check the releases page for snapshots of the code that correspond to the tutorials
 
 ## Why?
 Why not? This was just a "it can be done in ASM so why not try it?" project.
