@@ -19,10 +19,9 @@ This project is written specifically for linux, it should be compatible with all
 Why not? This was just a "it can be done in ASM so why not try it?" project.
 
 ## Fun facts
-There are exactly 1048 lines of code for the (current) working implementation.
-We broke 1k! (not surprising since its ASM but its still a lot)
+There are exactly 1113 lines of code for the (current) working implementation.
 
-The binary (at least on my PC) is 18512B once stripped and 25848B in release mode
+The binary (at least on my PC) is 18744B once stripped and 26736B in release mode
 
 This was hand written assembly code. All except the parts I wrote then duplicated and edited.
 

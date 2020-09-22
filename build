@@ -79,7 +79,7 @@ echo -e "\e[37mBuilding...\e[0m"
 recursive_compile
 if [ "$NEW_FILES" = "true" -o ! -f "target/$DIR/main" ];then
     echo "Linking..."
-    if $GCC_COMMAND -nostartfiles $FILES -lglfw -lGL -lcglm -o target/$DIR/main;then
+    if $GCC_COMMAND -nostartfiles $FILES -lc -lm -lglfw -lGL -lcglm -o target/$DIR/main;then
         echo -e "\e[32m  Linking successful\e[0m"
     fi
 else

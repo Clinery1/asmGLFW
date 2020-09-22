@@ -41,6 +41,10 @@ extern  glmc_lookat
 extern  glmc_mat4_mul
 extern  glmc_mat4_zero
 
+; libc imports (was trying to avoid these)
+extern  sinf
+extern  cosf
+
 ; my imports
 extern  myLoadShader
 extern  myPrint
@@ -78,8 +82,8 @@ extern  cacheShader
 %define NULL    0
 %define true    1
 %define false   0
-%define WIDTH   1024
-%define HEIGHT  768
+%define WIDTH   1280
+%define HEIGHT  720
 %define MAT4LEN 64
 %define VEC3LEN 12
 %define VEC4LEN 16
@@ -108,18 +112,23 @@ staticVertexBufferTriangles:equ staticVertexBufferLen/VEC3LEN
 baseMAT4:dd 1.0,0.0,0.0,0.0,  0.0,1.0,0.0,0.0,  0.0,0.0,1.0,0.0,  0.0,0.0,0.0,1.0
 
 ; vector things
-cameraPos:dd 4.0,3.0,3.0
-cameraLookAt:dd 0.0,0.0,0.0
-cameraHead:dd 0.0,1.0,0.0
+cameraPosStart:dd 8.0,3.0,8.0,0.0
+cameraPosStaticMul:dd 8.0,0.0,8.0,0.0
+cameraLookAtPos:dd 0.0,0.0,0.0,0.0
+cameraUp:dd 0.0,1.0,0.0,0.0
 
 ; floats
 pFourF:dd 0.4
 zeroF:dd 0.0
 oneF:dd 1.0
-deg45:dd 0.785398
-fourThirds:dd 1.33333333333333333333
-pOneF:dd 0.1
-hundredF:dd 100.0
+fovF:dd 0.78539816339744830962
+aspectRatioF:dd 1.77777777777777777778
+nearFieldF:dd 0.1
+farFieldF:dd 100.0
+millionF:dd 0.000001
+halfPI:dd 1.57079632679489661923
+cameraPosMask:dd 0.0,1.0,0.0,0.0
+mask1010:dd 1.0,0.0,1.0,0.0
 
 section .bss
 ; matrices
@@ -129,6 +138,7 @@ projectionMAT4:resb MAT4LEN
 viewMAT4:resb MAT4LEN
 modelMAT4:resb MAT4LEN
 intMAT4:resb MAT4LEN
+cameraPos:resd 4
 
 ; GL stuff: IDs and buffer storage
 window:resq 1
@@ -145,7 +155,15 @@ timeStruct:
 timeSeconds: resq 1
 timeMicros: resq 1
 timeZoneStruct: resd 2  ; we dont need this guy but it is here so we dont have to worry make a place on the stack
+timeFloat:resd 1 ; extra bits for ease of padding
 
+; scratch vars
+scratch1:resq 1
+scratch2:resq 1
+scratch3:resq 1
+scratch4:resq 2
+scratch5:resq 2
+scratch6:resq 2
 
 
 section .text
@@ -155,9 +173,12 @@ _start:
     call getStartTime
     jmp init    ; We use jmp here because glfwInit segfaults when we call init. Hacky stuff here
     .init:
-    call generateMatrices
+    call initMatrices
     .eventLoop:
     ; do {
+        ; Get the time we started this frame for calculation purposes
+        call getTime
+        call updateSpin
         ; clear the screen, this starts the render process
         mov rdi,GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT
         call glClear wrt ..plt
@@ -170,7 +191,6 @@ _start:
         mov rdx,GL_FALSE
         mov rcx,mvpMAT4
         call glUniformMatrix4fv wrt ..plt
-        call glGetError wrt ..plt
         ; BEGIN triangle drawing
             mov rdi,0
             call glEnableVertexAttribArray wrt ..plt
@@ -242,53 +262,98 @@ getStartTime:
     mov rsi,timeZoneStruct
     syscall
     ret
+
 getTime:
     mov rax,96
     mov rdi,timeStruct
     mov rsi,timeZoneStruct
     syscall
+    mov rax,[rel timeSeconds]
+    sub rax,[rel programTimeSeconds]
+    mov [rel timeSeconds],rax
+    mov rax,[rel timeMicros]
+    sub rax,[rel programTimeMicros]
+    mov [rel timeMicros],rax
+    ; convert the s and us to a float of both.
+    movups xmm0,[rel timeStruct]
+    cvtdq2ps xmm1,xmm0  ; this converts the ints to floats in xmm0 and puts the floats in xmm1
+    movhlps xmm2,xmm1
+    movss xmm3,[rel millionF]
+    mulss xmm2,xmm3
+    addss xmm1,xmm2
+    movss [rel timeFloat],xmm1
     ret
 
-generateMatrices:
+initMatrices:
     ; create the view matrix
-    mov rdi,cameraPos
-    mov rsi,cameraLookAt
-    mov rdx,cameraHead
-    mov rcx,viewMAT4
-    call glmc_lookat wrt ..plt
-
+    call lookAt
     ; move the base matrix (basic transform) into the modelMAT4 variable
     xor rax,rax
     mov rbx,baseMAT4
     mov rcx,modelMAT4
+    ; move the cameraPos vector into its position
+    movups xmm0,[rel cameraPosStart]
+    movaps [rel cameraPos],xmm0
     .move:
     mov rdx,[rbx+rax]
     mov [rcx+rax],rdx
     add rax,8
     cmp rax,64
     jne .move
-
     ; create the projection matrix
-    movss xmm3,[rel hundredF]
-    movss xmm2,[rel pOneF]
-    movss xmm1,[rel fourThirds]
-    movss xmm0,[rel deg45]
+    movss xmm3,[rel farFieldF]
+    movss xmm2,[rel nearFieldF]
+    movss xmm1,[rel aspectRatioF]
+    movss xmm0,[rel fovF]
     mov rdi,projectionMAT4
     call glmc_perspective wrt ..plt
+    jmp updateMatrices
 
+updateSpin:
+    ; take the sin(timeFloat)
+    ; here we take the value in timeFloat, assign it to xmm0 high and low,then add halfPI to xmm0 high then sin(x) that vector
+    movss xmm0,[rel timeFloat]
+    call sinf wrt ..plt
+    movss [rel scratch1],xmm0
+    movss xmm0,[rel timeFloat]
+    call cosf wrt ..plt
+    movss xmm1,xmm0
+    movss xmm0,[rel scratch1]
+    movlhps xmm0,xmm1
+    ; we just finished the sin and cos functions (cos is just sin(x+rad(90)))
+    movups xmm1,[rel cameraPosStaticMul]
+    mulps xmm0,xmm1
+    ; by now we have the values for the X and Z but we need the Y value
+    ; add the values to the position
+    movaps xmm2,[rel cameraPos]
+    movups xmm3,[rel cameraPosMask]
+    mulps xmm2,xmm3
+    addps xmm0,xmm2
+    movups [rel cameraPos],xmm0
+    call lookAt
+    call updateMatrices
+    ret
+
+
+updateMatrices:
     ; intMAT4 = projectionMAT4 * viewMAT4
-    mov rdi,projectionMAT4
+    mov rdi,modelMAT4
     mov rsi,viewMAT4
     mov rdx,intMAT4
     call glmc_mat4_mul wrt ..plt
     ; mvpMAT4 = intMAT4 * modelMAT4
-    mov rdi,modelMAT4
+    mov rdi,projectionMAT4
     mov rsi,intMAT4
     mov rdx,mvpMAT4
     call glmc_mat4_mul wrt ..plt
-    mov rax,modelMAT4
-    mov rbx,intMAT4
-    mov rcx,mvpMAT4
+    ret
+
+lookAt:
+    mov rdi,cameraPos
+    mov rsi,cameraLookAtPos
+    mov rdx,cameraUp
+    mov rcx,viewMAT4
+    call glmc_lookat wrt ..plt
     ret
 
 init:
