@@ -10,7 +10,7 @@ This project is written specifically for linux, it should be compatible with all
 ## Dependencies
 - linux (tested with kernel 5.8.9 on arch)
 - cglm 0.7.8<sup>1</sup>
-- openGL 3.3
+- openGL 4.5
 - GLFW3 3.3.2
 
 <sup>1</sup> cglm is on the AUR not the regular repos.
