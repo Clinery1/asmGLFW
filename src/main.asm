@@ -122,6 +122,14 @@ pOneF:dd 0.1
 hundredF:dd 100.0
 
 section .bss
+; matrices
+align 16
+mvpMAT4:resb MAT4LEN
+projectionMAT4:resb MAT4LEN
+viewMAT4:resb MAT4LEN
+modelMAT4:resb MAT4LEN
+intMAT4:resb MAT4LEN
+
 ; GL stuff: IDs and buffer storage
 window:resq 1
 vertexArrayID:resq 1
@@ -138,13 +146,6 @@ timeSeconds: resq 1
 timeMicros: resq 1
 timeZoneStruct: resd 2  ; we dont need this guy but it is here so we dont have to worry make a place on the stack
 
-; matrices
-align 16
-projectionMAT4:resb MAT4LEN
-viewMAT4:resb MAT4LEN
-modelMAT4:resb MAT4LEN
-mvpMAT4:resb MAT4LEN
-intMAT4:resb MAT4LEN
 
 
 section .text
@@ -169,6 +170,7 @@ _start:
         mov rdx,GL_FALSE
         mov rcx,mvpMAT4
         call glUniformMatrix4fv wrt ..plt
+        call glGetError wrt ..plt
         ; BEGIN triangle drawing
             mov rdi,0
             call glEnableVertexAttribArray wrt ..plt
@@ -258,10 +260,11 @@ generateMatrices:
     ; move the base matrix (basic transform) into the modelMAT4 variable
     xor rax,rax
     mov rbx,baseMAT4
+    mov rcx,modelMAT4
     .move:
-    movss xmm0,[rbx+rax]
-    movss [rbx+rax],xmm0
-    add rax,VEC4LEN
+    mov rdx,[rbx+rax]
+    mov [rcx+rax],rdx
+    add rax,8
     cmp rax,64
     jne .move
 
@@ -279,10 +282,13 @@ generateMatrices:
     mov rdx,intMAT4
     call glmc_mat4_mul wrt ..plt
     ; mvpMAT4 = intMAT4 * modelMAT4
-    mov rdi,baseMAT4
+    mov rdi,modelMAT4
     mov rsi,intMAT4
     mov rdx,mvpMAT4
     call glmc_mat4_mul wrt ..plt
+    mov rax,modelMAT4
+    mov rbx,intMAT4
+    mov rcx,mvpMAT4
     ret
 
 init:
@@ -340,11 +346,10 @@ init:
     mov rdi,rax
     mov rsi,MVPString
     call glGetUniformLocation wrt ..plt
-    breakpoint:
     mov [rel matrixID],rax
     ; END SHADER INIT
     ; BEGIN TRIANGLE INIT
-    mov rdi,3
+    mov rdi,1
     mov rsi,vertexBuffer
     call glGenBuffers wrt ..plt
     mov rdi,GL_ARRAY_BUFFER
