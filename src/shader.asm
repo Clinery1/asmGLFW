@@ -8,7 +8,6 @@
 
 
 global  myLoadShader
-global  cacheShader
 
 
 ; GL imports
@@ -55,65 +54,65 @@ extern  writeFile
 
 section .data
 ; fragment things
+    ; errors
 fragReadError:db "Could not read fragment shader",10
 fragReadErrorLen:equ $-fragReadError
+fragFileNotFoundMsg:db "File `fragment.glsl` is not found",10
+fragFileNotFoundMsgLen:equ $-fragFileNotFoundMsg
+    ; message/filename
 compileFrag:db "Compiling frag shader",10
 compileFragLen:equ $-compileFrag
 fragShaderFilename:db "fragment.glsl",0
-fragFileNotFoundMsg:db "File `fragment.glsl` is not found",10
-fragFileNotFoundMsgLen:equ $-fragFileNotFoundMsg
 
 ; vertex things
+    ; errors
 vertReadError:db "Could not read vertex shader",10
 vertReadErrorLen:equ $-vertReadError
+vertFileNotFoundMsg:db "File `vertex.glsl` is not found",10
+vertFileNotFoundMsgLen:equ $-vertFileNotFoundMsg
+    ; message/filename
 compileVert:db "Compiling vertex shader",10
 compileVertLen:equ $-compileVert
 vertShaderFilename:db "vertex.glsl",0
-vertFileNotFoundMsg:db "File `vertex.glsl` is not found",10
-vertFileNotFoundMsgLen:equ $-vertFileNotFoundMsg
 
 ; other stuff
-openMode:db "r",0
+    ; errors
 allocErrorText:db "Memory allocation error",10
 allocErrorTextLen:equ $-allocErrorText
+    ; message/open mode
 linkText:db "Linking the program",10
 linkTextLen:equ $-linkText
-getProgramError1:db "Unable to get program length, program not cached",10
-getProgramError1Len:equ $-getProgramError1
-getProgramError2:db "Unable to get program binary, program not cached",10
-getProgramError2Len:equ $-getProgramError2
-getProgramError3:db "Unable to write to program.cache",10
-getProgramError3Len:equ $-getProgramError2
-shaderCached:db "Shader was previously cached, not cacheing",10
-shaderCachedLen:equ $-shaderCached
-shaderCacheName:db "program.cache",0
+openMode:db "r",0
 
 section .bss
-; fragment things
+; fragment variables
 fragSrcPtrPtr:resq 1
 fragSrcPtr:resq 1
 fragSize:resq 1
 fragID:resq 1
 
-; vertex things
+; vertex variables
 vertSrcPtrPtr:resq 1
 vertSrcPtr:resq 1
 vertSize:resq 1
 vertID:resq 1
 
-; other things
+; other variables
 programBinPtr:resq 1
 programID:resq 1
 result:resq 1
 infoLogLength:resq 1
 infoLogPtr:resq 1
-binaryFormat:resq 1
 
 
 section .text
 ; function(rdi,rsi,rdx,rcx,r8,r9)->rax   other args go to the stack in reverse order
 ; functions return in rax
 
+; TODO: comment the process of what happens in here
+; overview of the myLoadShader function: the myLoadShader function first reads the files `vertex.glsl` and `fragment.glsl` into RAM, if it can't read either then we exit the program with an error.
+;   After the files are read into RAM, we then compile the shaders and if there are errors, we exit. After compilation comes linking the shaders to a program. Same error handling for this part.
+;   Once all of the above listed things are done we return the ID of the program we just made.
 myLoadShader:
     ; move the pointer to the pointer to the shader code into [(SHADER_TYPE)SrcPtrPtr]
     mov rdi,fragSrcPtr

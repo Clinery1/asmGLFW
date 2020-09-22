@@ -1,13 +1,28 @@
 # GLFW in Assembly language
 This project was started Friday 9/18/20 and through a lot of segfaults and other issues, it is brought to (sort of) life on 9/20/20.
+
 This project is based on the tutorials in [opengl-tutorials/ogl](https://github.com/opengl-tutorials/ogl)
+
 Check the releases page for snapshots of the code that correspond to the tutorials
+
+This project is written specifically for linux, it should be compatible with all GLFW backends (X11/wayland)
+
+## Dependencies
+- linux (tested with kernel 5.8.9 on arch)
+- cglm 0.7.8<sup>1</sup>
+- openGL 3.3
+- GLFW3 3.3.2
+
+<sup>1</sup> cglm is on the AUR not the regular repos.
 
 ## Why?
 Why not? This was just a "it can be done in ASM so why not try it?" project.
 
 ## Fun facts
-There are exactly 825 lines of code for the (current) working implementation.
+There are exactly 1043 lines of code for the (current) working implementation.
+We broke 1k! (not surprising since its ASM but its still a lot)
+
+The binary (at least on my PC) is 18504B once stripped and 25840B in release mode
 
 This was hand written assembly code. All except the parts I wrote then duplicated and edited.
 

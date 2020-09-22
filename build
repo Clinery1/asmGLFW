@@ -68,7 +68,7 @@ recursive_compile() {
                     popd > /dev/null
                 else
                     FILES="$FILES target/$DIR/$basename.o"
-                    echo -e "\e[34m  Skipping: $FILE not modified\e[0m"
+                    # echo -e "\e[34m  Skipping: $FILE not modified\e[0m"
                 fi
             fi
         fi
@@ -79,7 +79,7 @@ echo -e "\e[37mBuilding...\e[0m"
 recursive_compile
 if [ "$NEW_FILES" = "true" -o ! -f "target/$DIR/main" ];then
     echo "Linking..."
-    if $GCC_COMMAND -nostartfiles $FILES -lglfw -lGL -o target/$DIR/main;then
+    if $GCC_COMMAND -nostartfiles $FILES -lglfw -lGL -lcglm -o target/$DIR/main;then
         echo -e "\e[32m  Linking successful\e[0m"
     fi
 else
