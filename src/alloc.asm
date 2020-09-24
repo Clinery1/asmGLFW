@@ -1,3 +1,4 @@
+; TODO: redo this and make it much better.
 ; Definitions of what happens. Used for the `prot` and `flags` variables in the mmap syscall
 
 %define PROT_READ       0x1     ; Page can be read.
