@@ -10,5 +10,4 @@ out vec3 colorBuffer;
 void main() {
     gl_Position=MVP*vec4(vertexPosition,1.0);
     colorBuffer=colorBufferVertex;
-
 }

@@ -205,6 +205,10 @@ _start:
             call glEnableVertexAttribArray wrt ..plt
             mov rdi,1
             call glEnableVertexAttribArray wrt ..plt
+            mov rdi,GL_ARRAY_BUFFER
+            mov rsi,[rel vertexBuffer]
+            call glBindBuffer wrt ..plt
+            call glGetError wrt ..plt
             mov rdi,0
             mov rsi,3
             mov rdx,GL_FLOAT
@@ -212,6 +216,9 @@ _start:
             mov r8,0
             mov r9,0
             call glVertexAttribPointer wrt ..plt
+            mov rdi,GL_ARRAY_BUFFER
+            mov rsi,[rel colorBuffer]
+            call glBindBuffer wrt ..plt
             mov rdi,1
             mov rsi,3
             mov rdx,GL_FLOAT
@@ -332,7 +339,7 @@ updateSpin:
     ; clear scratch 1 and 2
     mov qword[rel scratch1],0
     mov qword[rel scratch2],0
-    ; take the sin(timeFloat)
+    ; take sin(timeFloat)
     ; here we take the value in timeFloat, assign it to xmm0 high and low,then add halfPI to xmm0 high then sin(x) that vector
     mov rax,scratch1
     mov rbx,scratch2
@@ -382,91 +389,94 @@ lookAt:
 
 init:
     ; BEGIN INIT
-    call glfwInit wrt ..plt
-    cmp rax,false
-    je _start.initError
-    ; START WINDOW HINTS
-    mov rdi,GLFW_SAMPLES
-    mov rsi,4
-    call glfwWindowHint wrt ..plt
-    mov rdi,GLFW_CONTEXT_VERSION_MAJOR
-    mov rsi,4
-    call glfwWindowHint wrt ..plt
-    mov rdi,GLFW_CONTEXT_VERSION_MINOR
-    mov rsi,5
-    call glfwWindowHint wrt ..plt
-    mov rdi,GLFW_OPENGL_FORWARD_COMPAT
-    mov rsi,GL_TRUE
-    call glfwWindowHint wrt ..plt
-    mov rdi,GLFW_OPENGL_PROFILE
-    mov rsi,GLFW_OPENGL_CORE_PROFILE
-    call glfwWindowHint wrt ..plt
-    ; END WINDOW HINTS
-    ; this is where we actually create the window, after this function call the window will either popup or you have an error
-    mov rdi,WIDTH
-    mov rsi,HEIGHT
-    mov rdx,windowName
-    mov rcx,NULL
-    mov r8,NULL
-    call glfwCreateWindow wrt ..plt
-    mov [rel window],rax
-    cmp qword[rel window],NULL
-    je _start.windowError
-    mov rdi,[rel window]
-    call glfwMakeContextCurrent wrt ..plt
-    mov rdi,[rel window]
-    mov rsi,GLFW_STICKY_KEYS
-    mov rdx,GL_TRUE
-    call glfwSetInputMode wrt ..plt
-    ; here we use the MMX registers for passing floats to the function `glClearColor`
-    movss xmm0,[rel zeroF]  ; R
-    movss xmm1,[rel zeroF]  ; G
-    movss xmm2,[rel pFourF] ; B
-    movss xmm3,[rel oneF]   ; A this is not needed though since we don't have an RGBA buffer. apparently a later tutorial introduces the alpha channel
-    call glClearColor wrt ..plt
-    mov rdi,GL_DEPTH_TEST
-    call glEnable wrt ..plt
-    mov rdi,GL_LESS
-    call glDepthFunc wrt ..plt
-    mov rdi,1
-    mov rsi,vertexArrayID
-    call glGenVertexArrays wrt ..plt
-    mov rdi,[rel vertexArrayID]
-    call glBindVertexArray wrt ..plt
-    ; BEGIN SHADER INIT
-    call myLoadShader wrt ..plt
-    mov [rel programID],rax
-    mov rdi,rax
-    mov rsi,MVPString
-    call glGetUniformLocation wrt ..plt
-    mov [rel matrixID],rax
-    ; END SHADER INIT
-    ; BEGIN TRIANGLE INIT
-    mov rdi,2
-    mov rsi,vertexBuffer
-    call glGenBuffers wrt ..plt
-    ; BEGIN BUFFER SWAP
-    xor rbx,rbx
-    mov rax,[rel vertexBuffer+4]
-    mov [rel vertexBuffer+4],rbx
-    mov [rel colorBuffer],rax
-    ; END BUFFER SWAP
-    mov rdi,GL_ARRAY_BUFFER
-    mov rsi,[rel vertexBuffer]
-    call glBindBuffer wrt ..plt
-    mov rdi,GL_ARRAY_BUFFER
-    mov rsi,[rel colorBuffer]
-    call glBindBuffer wrt ..plt
-    mov rdi,GL_ARRAY_BUFFER
-    mov rsi,cubeVertexColorsLen
-    mov rdx,cubeVertexColors
-    mov rcx,GL_STATIC_DRAW
-    call glBufferData wrt ..plt
-    mov rdi,GL_ARRAY_BUFFER
-    mov rsi,cubeVerticesLen
-    mov rdx,cubeVertices
-    mov rcx,GL_STATIC_DRAW
-    call glBufferData wrt ..plt
-    ; END TRIANGLE INIT
+        call glfwInit wrt ..plt
+        cmp rax,false
+        je _start.initError
+        ; START WINDOW HINTS
+            mov rdi,GLFW_SAMPLES
+            mov rsi,4
+            call glfwWindowHint wrt ..plt
+            mov rdi,GLFW_CONTEXT_VERSION_MAJOR
+            mov rsi,4
+            call glfwWindowHint wrt ..plt
+            mov rdi,GLFW_CONTEXT_VERSION_MINOR
+            mov rsi,5
+            call glfwWindowHint wrt ..plt
+            mov rdi,GLFW_OPENGL_FORWARD_COMPAT
+            mov rsi,GL_TRUE
+            call glfwWindowHint wrt ..plt
+            mov rdi,GLFW_OPENGL_PROFILE
+            mov rsi,GLFW_OPENGL_CORE_PROFILE
+            call glfwWindowHint wrt ..plt
+        ; END WINDOW HINTS
+        ; this is where we actually create the window, after this function call the window will either popup or you have an error
+        mov rdi,WIDTH
+        mov rsi,HEIGHT
+        mov rdx,windowName
+        mov rcx,NULL
+        mov r8,NULL
+        call glfwCreateWindow wrt ..plt
+        mov [rel window],rax
+        cmp qword[rel window],NULL
+        je _start.windowError
+        mov rdi,[rel window]
+        call glfwMakeContextCurrent wrt ..plt
+        mov rdi,[rel window]
+        mov rsi,GLFW_STICKY_KEYS
+        mov rdx,GL_TRUE
+        call glfwSetInputMode wrt ..plt
+        ; here we use the MMX registers for passing floats to the function `glClearColor`
+        movss xmm0,[rel zeroF]  ; R
+        movss xmm1,[rel zeroF]  ; G
+        movss xmm2,[rel pFourF] ; B
+        movss xmm3,[rel oneF]   ; A this is not needed though since we don't have an RGBA buffer. apparently a later tutorial introduces the alpha channel
+        call glClearColor wrt ..plt
+        mov rdi,GL_DEPTH_TEST
+        call glEnable wrt ..plt
+        mov rdi,GL_LESS
+        call glDepthFunc wrt ..plt
+        mov rdi,1
+        mov rsi,vertexArrayID
+        call glGenVertexArrays wrt ..plt
+        mov rdi,[rel vertexArrayID]
+        call glBindVertexArray wrt ..plt
+        ; BEGIN SHADER INIT
+            call myLoadShader wrt ..plt
+            mov [rel programID],rax
+            mov rdi,rax
+            mov rsi,MVPString
+            call glGetUniformLocation wrt ..plt
+            mov [rel matrixID],rax
+        ; END SHADER INIT
+            ; BEGIN TRIANGLE INIT
+            mov rdi,2
+            mov rsi,vertexBuffer
+            call glGenBuffers wrt ..plt
+            ; BEGIN BUFFER SWAP
+                xor rbx,rbx
+                mov rax,[rel vertexBuffer+4]
+                mov [rel vertexBuffer+4],rbx
+                mov [rel colorBuffer],rax
+            ; END BUFFER SWAP
+            ; we HAVE to do the buffers the right way, bind it THEN and ONLY THEN assign the value to it. Repeat for the next buffer, found out the hard way
+            ; do the colors
+            mov rdi,GL_ARRAY_BUFFER
+            mov rsi,[rel colorBuffer]
+            call glBindBuffer wrt ..plt
+            mov rdi,GL_ARRAY_BUFFER
+            mov rsi,cubeVertexColorsLen
+            mov rdx,cubeVertexColors
+            mov rcx,GL_STATIC_DRAW
+            call glBufferData wrt ..plt
+            ; Do the verticies now
+            mov rdi,GL_ARRAY_BUFFER
+            mov rsi,[rel vertexBuffer]
+            call glBindBuffer wrt ..plt
+            mov rdi,GL_ARRAY_BUFFER
+            mov rsi,cubeVerticesLen
+            mov rdx,cubeVertices
+            mov rcx,GL_STATIC_DRAW
+            call glBufferData wrt ..plt
+        ; END TRIANGLE INIT
     ; END INIT
     jmp _start.init ; return to just after where we left, see _start as to why this is not a `ret` instruction
